@@ -1,0 +1,513 @@
+---
+title: "Práctica 1. Importación de Datos"
+author: "Miriam Caballero Cerveró"
+date: "`r Sys.Date()`"
+output:
+  bookdown::pdf_document2:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    figure_caption: "Figura" # Referencias en castellano
+    table_caption: "Tabla"
+  html_document:
+    echo: true
+    number_sections: true
+    theme: lumen
+    toc: true
+  html_notebook:
+    echo: true
+    number_sections: true
+    toc: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+  bookdown::html_document2:
+    echo: true
+    number_sections: true
+    theme: spacelab
+    toc: true
+    figure_caption: "Figura"
+    table_caption: "Tabla"
+always_allow_html: true
+params:
+  lang: ES
+lang: "`r switch(params$lang, ES = 'es-ES', EN = 'en-US')`"
+subtitle: "Análisis Exploratorio de Datos. Máster en Ciencia de Datos - UV"
+language:
+  label:
+    fig: 'Figura '
+    tab: 'Tabla '
+    eq: 'Ecuación '
+    thm: 'Teorema '
+    lem: 'Lema '
+    def: 'Definición '
+    cor: 'Corolario '
+    prp: 'Proposición '
+    exm: 'Ejemplo '
+    exr: 'Ejercicio '
+    proof: 'Demostración. '
+    remark: 'Nota: '
+    solution: 'Solución. '
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Introducción
+
+El objetivo de esta práctica es realizar la importación de ficheros con
+diferentes formatos, organizar los datos en un data frame, y almacenarlo
+en un fichero tipo RData.
+
+```{r paquetes, eval=FALSE}
+# Instalamos paquetes necesarios
+install.packages(c('readr','hms','haven','jsonlite','readxl','rmarkdown','bookdown','knitr'))
+if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager')
+BiocManager::install('rhdf5')
+```
+
+```{r bibliotecas}
+# Cargamos librerías
+library(readr)
+library(hms)
+library(haven)
+library(jsonlite)
+library(readxl)
+```
+
+# Preparación del proyecto
+
+Se utiliza un proyecto RStudio con una carpeta `data` para los ficheros
+de entrada y una subcarpeta `data/results` para los objetos `.RData`.
+Todas las rutas son relativas al proyecto.
+
+```{r}
+# Creamos carpeta de resultados, figuras y programas
+#dir.create(".data/results",
+           #recursive = TRUE,
+           #showWarnings = FALSE)
+
+#dir.create(".data/figure",
+           #recursive = TRUE,
+           #showWarnings = FALSE)
+
+#dir.create(".data/program",
+           #recursive = TRUE,
+           #showWarnings = FALSE)
+```
+
+# Ejemplo: fichero DFP1_11122015 124700.csv
+
+## Importación del fichero
+
+```{r deposito}
+# Path donde está el archivo
+fname <- 'data/DFP1_11122015 124700.csv'
+# Comprobamos si existe el archivo
+if (file.exists(fname)) {
+  # Leemos de dos maneras distintas:
+  # 1) Leemos el archivo con read.csv utilizando R base
+  Deposito <- read.csv(
+    fname,
+    sep = "\t",
+    stringsAsFactors = FALSE
+  )
+  # sep="\t" columnas están separadas por tabuladores.
+  # stringsAsFactors=FALSE evita convertir el texto en factores.
+  # 2) Leemos el archivo con readr
+  Deposito_readr <- readr::read_tsv(
+    fname,
+    show_col_types = FALSE
+  )
+  # read_csv permite leer archivos separados por tabuladores
+  # show_col_types=FALSE oculta el mensaje de tipos detectados.
+  
+  # Comparamos los tipos de objetos obtenidos
+  print(data.frame(
+    base = class(Deposito)[1],
+    readr = class(Deposito_readr)[1]
+  ))
+
+  # Mostramos los nombres de las columnas
+  print(names(Deposito))
+
+  # Convertimos la columna FECHA a formato fecha
+  Deposito$FECHA <- as.POSIXlt(
+    Deposito$FECHA,
+    format = '%d/%m/%Y'
+  )
+
+  # Convertimos la columna HORA a formato hora
+  Deposito$HORA <- hms::as_hms(Deposito$HORA)
+
+  # Guardamos el resultado en formato RData
+  save(
+    Deposito,
+    file = 'data/results/Deposito.RData'
+  )
+} else cat('Pendiente: ', fname, '\n')
+```
+
+La lectura base devuelve un `data.frame`; `read_csv()` devuelve un
+`tibble`.
+
+## Inspección
+
+```{r deposito-inspeccion}
+if (exists('Deposito')) {
+  str(Deposito); head(Deposito); tail(Deposito); summary(Deposito)
+}
+```
+
+`str()` muestra estructura y tipos; `head()` y `tail()` muestran
+primeras y últimas observaciones; `summary()` ofrece resúmenes
+estadísticos.
+
+# Transactions from a Bakery
+
+## Importación
+
+```{r bakery}
+fname <- "data/bakery_sales_revised.csv"
+if (file.exists(fname)) {
+  BreadBasket <- readr::read_csv(fname, show_col_types=FALSE)
+  print(readr::spec(BreadBasket))
+  save(BreadBasket, file='data/results/BreadBasket.RData')
+} else cat('Pendiente: ', fname, '\n')
+```
+
+## Inspección
+
+```{r bakery-inspeccion}
+if (exists('BreadBasket')) {
+  dim(BreadBasket); str(BreadBasket); head(BreadBasket)
+  tail(BreadBasket); summary(BreadBasket)
+  colSums(is.na(BreadBasket))
+}
+```
+
+# Fichero SPSS PsychBike.sav
+
+## Importación
+
+```{r psychbike}
+fname <- 'data/PsychBike.sav'
+if (file.exists(fname)) {
+  PsychBike <- haven::read_sav(fname)
+  save(PsychBike, file='data/results/PsychBike.RData')
+} else cat('Pendiente: ', fname, '\n') 
+```
+
+`haven` preserva atributos y etiquetas SPSS. Si es necesario,
+`haven::as_factor()` transforma variables etiquetadas en factores.
+
+## Inspección
+
+```{r psychbike-inspeccion}
+if (exists('PsychBike')) {
+  dim(PsychBike); str(PsychBike); head(PsychBike)
+  tail(PsychBike); summary(PsychBike)
+}
+```
+
+# Fichero iris.zip
+
+## Descomprimir el fichero
+
+```{r iris-unzip}
+if (file.exists('data/iris.zip')) {
+  unzip('data/iris.zip', exdir='data')
+} else cat('Pendiente: data/iris.zip\n')
+```
+
+# Fichero iris.data
+
+## Importación
+
+El fichero clásico de UCI está separado por comas; se usa `read_csv()`
+en vez de `read_table()` para respetar el delimitador real.
+
+```{r iris-import}
+if (file.exists('data/iris.data')) {
+  iris_df <- readr::read_csv('data/iris.data', col_names=FALSE,
+                            show_col_types=FALSE)
+  names(iris_df) <- c('Sepal.Length','Sepal.Width','Petal.Length',
+                      'Petal.Width','Species')
+  save(iris_df, file='data/results/iris.RData')
+} else cat('Pendiente: data/iris.data\n')
+```
+
+## Inspección
+
+```{r iris-inspeccion}
+if (exists('iris_df')) {
+  dim(iris_df); str(iris_df); head(iris_df)
+  tail(iris_df); summary(iris_df); table(iris_df$Species)
+}
+```
+
+# Fichero JSON FileCodificado.json
+
+## Importación
+
+`read_json(..., simplifyVector=FALSE)` conserva listas; `TRUE` intenta
+simplificar estructuras homogéneas.
+
+```{r codificado}
+fname <- 'data/FileCodificado.json'
+if (file.exists(fname)) {
+  codificado_lista <- jsonlite::read_json(fname, simplifyVector=FALSE)
+  codificado_simple <- jsonlite::read_json(fname, simplifyVector=TRUE)
+  str(codificado_lista, max.level=2)
+  str(codificado_simple, max.level=2)
+  FileCodificado <- tryCatch(as.data.frame(codificado_simple),
+                            error=function(e) codificado_simple)
+  save(FileCodificado, file='data/results/FileCodificado.RData')
+} else cat('Pendiente: ', fname, '\n')
+```
+
+## Inspección
+
+```{r codificado-inspeccion}
+if (exists('FileCodificado')) {
+  print(dim(FileCodificado)); str(FileCodificado)
+  head(FileCodificado); tail(FileCodificado); summary(FileCodificado)
+}
+```
+
+# Fichero JSON iris_json.json
+
+## Importación
+
+`fromJSON()` simplifica por defecto; `read_json()` no simplifica por
+defecto.
+
+```{r iris-json}
+fname <- 'data/iris_json.json'
+if (file.exists(fname)) {
+  iris_json_lista <- jsonlite::read_json(fname)
+  iris_json <- jsonlite::fromJSON(fname)
+  str(iris_json_lista, max.level=2)
+  str(iris_json, max.level=2)
+  save(iris_json, file='data/results/iris_json.RData')
+} else cat('Pendiente: ', fname, '\n')
+```
+
+## Inspección
+
+```{r iris-json-inspeccion}
+if (exists('iris_json')) {
+  str(iris_json); head(iris_json); tail(iris_json); summary(iris_json)
+}
+```
+
+## Exportación en JSON
+
+```{r iris-export}
+if (file.exists('data/results/iris.RData')) {
+  e <- new.env()
+  load('data/results/iris.RData', envir=e)
+  jsonlite::write_json(e$iris_df, 'data/iris_json_v2.json', pretty=TRUE)
+  texto_json <- jsonlite::toJSON(e$iris_df, dataframe='rows',
+                                 auto_unbox=TRUE, pretty=TRUE)
+  readr::write_file(texto_json, 'data/iris_json_v3.json')
+  texto_compacto <- jsonlite::toJSON(e$iris_df, dataframe='rows',
+                                     auto_unbox=TRUE, pretty=FALSE)
+  readr::write_file(texto_compacto, 'data/iris_json_compacto.json')
+}
+```
+
+`pretty=TRUE` añade sangrías y saltos de línea, sin cambiar los valores
+representados.
+
+# Fichero ERCA.xlsx
+
+## Importación
+
+El tipo de las columnas debe revisarse en el Excel original antes de
+fijar `col_types`. No se presupone que todas las columnas sean
+numéricas.
+
+```{r erca}
+fname <- 'data/ERCA.xlsx'
+if (file.exists(fname)) {
+  ERCA <- readxl::read_excel(fname, sheet=2)
+  print(data.frame(columna=names(ERCA), tipo=sapply(ERCA, class)))
+  if ('IDENTIFICA' %in% names(ERCA)) {
+    ERCA <- ERCA[!is.na(ERCA$IDENTIFICA), , drop=FALSE]
+  } else warning('No se encontró la columna IDENTIFICA')
+  save(ERCA, file='data/results/ERCA.RData')
+} else cat('Pendiente: ', fname, '\n') # Sale como pendiente, pero me funciona
+#por la consola
+```
+
+## Inspección
+
+```{r erca-inspeccion}
+if (exists('ERCA')) {
+  dim(ERCA); str(ERCA); head(ERCA); tail(ERCA); summary(ERCA)
+}
+```
+
+# Fichero subjectInfo.xlsx
+
+## Importación
+
+```{r pacientes}
+fname <- 'data/subjectInfo.xlsx'
+if (file.exists(fname)) {
+  sheets <- readxl::excel_sheets(fname)
+  # Lectura individual de las primeras cuatro hojas disponibles
+  hojas_individuales <- lapply(seq_len(min(4, length(sheets))),
+                              function(i) readxl::read_excel(fname, sheet=i))
+  # Lectura mediante for
+  Pacientes_for <- list()
+  for (n in sheets) Pacientes_for[[n]] <- readxl::read_excel(fname, sheet=n)
+  # Lectura mediante lapply
+  Pacientes <- lapply(sheets, function(hoja) readxl::read_excel(fname, sheet=hoja))
+  names(Pacientes) <- sheets
+  save(Pacientes, file='data/results/Pacientes.RData')
+} else cat('Pendiente: ', fname, '\n')
+```
+
+`lapply()` devuelve una lista y evita escribir manualmente una
+instrucción por hoja.
+
+## Inspección
+
+```{r pacientes-inspeccion}
+if (exists('Pacientes')) {
+  str(Pacientes, max.level=1)
+  str(Pacientes, max.level=2)
+  lapply(Pacientes, head); lapply(Pacientes, tail)
+  lapply(Pacientes, summary); lapply(Pacientes, dim)
+}
+```
+
+# Fichero Robot.hdf5
+
+## Inspección del fichero
+
+```{r robot-inspeccion}
+fname <- 'data/Robot.hdf5'
+if (file.exists(fname) && requireNamespace('rhdf5', quietly=TRUE)) {
+  estructura <- rhdf5::h5ls(fname, recursive=TRUE)
+  print(estructura)
+  datasets <- estructura[estructura$otype=='H5I_DATASET', , drop=FALSE]
+  cat('Número de datasets:', nrow(datasets), '\n')
+  print(datasets[, c('group','name','dim'), drop=FALSE])
+  Robot <- rhdf5::h5read(fname, '/')
+  str(Robot, max.level=2)
+  head(Robot); tail(Robot); summary(Robot)
+} else cat('Pendiente: fichero Robot.hdf5 o paquete rhdf5\n')
+```
+
+`head()` y `tail()` aplicados a listas devuelven sus primeros y últimos
+elementos, no necesariamente filas. La columna `dim` de `h5ls()` permite
+identificar las dimensiones de cada dataset.
+
+## Lectura de POSMONInput/Auto
+
+```{r robot-auto}
+if (file.exists(fname) && requireNamespace('rhdf5', quietly=TRUE)) {
+  Auto <- rhdf5::h5read(fname, '/POSMONInput/Auto')
+  Robot_df <- as.data.frame(Auto)
+  str(Robot_df)
+  valores_unicos <- length(unique(unlist(Robot_df, use.names=FALSE)))
+  cat('Valores únicos de Auto:', valores_unicos, '\n')
+  save(Robot_df, file='data/results/Robot.RData')
+  rhdf5::h5closeAll()
+}
+```
+
+# Resultados y conclusiones
+
+## Comprobación de ficheros
+
+```{r comprobacion}
+esperados <- c('Deposito.RData','BreadBasket.RData','PsychBike.RData',
+               'iris.RData','FileCodificado.RData','iris_json.RData',
+               'ERCA.RData','Pacientes.RData','Robot.RData')
+knitr::kable(data.frame(archivo=esperados,
+                        generado=file.exists(file.path('data/results', esperados))),
+             caption='Comprobación de los archivos de resultados')
+```
+
+## Capturas de pantalla
+
+### Captura del apartado 2. Depósito
+
+En la siguiente captura se muestra la importación y la inspección de los datos del depósito.
+
+```{r captura-deposito, echo=FALSE, out.width='85%', fig.cap='Importación e inspección de los datos del depósito'}
+knitr::include_graphics("data/figure/deposito.png")
+```
+
+### Captura del apartado 3. Bakery
+
+En la siguiente captura se muestra la estructura y las primeras observaciones del conjunto de datos Bakery.
+
+```{r captura-bakery, echo=FALSE, out.width='85%', fig.cap='Inspección del conjunto de datos Bakery'}
+knitr::include_graphics("data/figure/bakery.png")
+```
+
+### Captura del apartado 4. PsychBike
+
+En la siguiente captura se muestra la importación del fichero SPSS y la inspección de las variables.
+
+```{r captura-psychbike, echo=FALSE, out.width='85%', fig.cap='Importación del fichero PsychBike'}
+knitr::include_graphics("data/figure/psychbike.png")
+```
+
+### Captura del apartado 5. Iris
+
+En esta captura se muestra el resultado de la inspección de los datos de Iris.
+
+```{r captura-iris2, echo=FALSE, out.width='85%', fig.cap='Inspección de los datos Iris'}
+knitr::include_graphics("data/figure/iris.png")
+```
+
+### Captura del apartado 6. FileCodificado
+
+En la siguiente captura se muestra la importación del fichero JSON y la estructura de los datos obtenidos.
+
+```{r captura-filecodificado, echo=FALSE, out.width='85%', fig.cap='Importación del fichero FileCodificado.json'}
+knitr::include_graphics("data/figure/FileCodificado.png")
+```
+
+### Captura del apartado 7. Iris JSON
+
+En esta captura se muestra la importación del conjunto de datos Iris desde un fichero JSON.
+
+```{r captura-iris-json, echo=FALSE, out.width='85%', fig.cap='Importación del fichero iris\\_json.json'}
+knitr::include_graphics("data/figure/irisJson.png")
+```
+
+### Captura del apartado 8. ERCA
+
+En la siguiente captura se muestra la importación del fichero Excel ERCA, la comprobación de los tipos de variables y la limpieza de los datos.
+
+```{r captura-erca, echo=FALSE, out.width='85%', fig.cap='Importación y limpieza de los datos ERCA'}
+knitr::include_graphics("data/figure/erca.png")
+```
+
+### Captura del apartado 9. Pacientes
+
+En la siguiente captura se muestra la importación del fichero Excel y la inspección de sus variables.
+
+```{r captura-pacientes, echo=FALSE, out.width='75%', fig.cap='Importación e inspección de los datos de pacientes'}
+knitr::include_graphics("data/figure/pacientes.png")
+```
+
+### Captura final: Carpeta results
+
+```{r captura-results, echo=FALSE, out.width='85%'}
+knitr::include_graphics("data/figure/results.png")
+```
+
+## Conclusión
+
+La práctica muestra cómo importar distintos formatos de datos, comprobar
+sus estructuras y almacenar objetos R.
